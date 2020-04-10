@@ -1,10 +1,10 @@
 {
-  "Notebook": {
-    "Export to modules": "/export",
-    "Convert to html": "/export2html",
-    "Show doc": "/showdoc",
-    "Test functions": "/test",
-    "Core functions": "/core",
-    "Command line functions": "/cli"
+  "ifcimglib": {
+    "Overview": "/",
+    "Apply preprocessing to db": "/apply",
+    "Convert CIF-file to LMDB": "/cif2lmdb",
+    "`imglmdb` for reading images from lmdb databases": "/imglmdb",
+    "Preprocessing functions for images stored in lmmdb": "/preprocessing",
+    "Utility functions for handling lmdb databases": "/utils"
   }
 }

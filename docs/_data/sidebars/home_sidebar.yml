@@ -7,24 +7,24 @@ entries:
 - folders:
   - folderitems:
     - output: web,pdf
-      title: Export to modules
-      url: /export.html
+      title: Overview
+      url: /
     - output: web,pdf
-      title: Convert to html
-      url: /export2html.html
+      title: Apply preprocessing to db
+      url: /apply
     - output: web,pdf
-      title: Show doc
-      url: /showdoc.html
+      title: Convert CIF-file to LMDB
+      url: /cif2lmdb
     - output: web,pdf
-      title: Test functions
-      url: /test.html
+      title: '`imglmdb` for reading images from lmdb databases'
+      url: /imglmdb
     - output: web,pdf
-      title: Core functions
-      url: /core.html
+      title: Preprocessing functions for images stored in lmmdb
+      url: /preprocessing
     - output: web,pdf
-      title: Command line functions
-      url: /cli.html
+      title: Utility functions for handling lmdb databases
+      url: /utils
     output: web
-    title: Notebook
+    title: ifcimglib
   output: web
   title: Sidebar

@@ -2,9 +2,23 @@
 
 __all__ = ["index", "modules", "custom_doc_links", "git_url"]
 
-index = {"imglmdb": "imglmdb.ipynb"}
+index = {"preprocess_db": "apply.ipynb",
+         "get_instance": "cif2lmdb.ipynb",
+         "update_instance_data": "cif2lmdb.ipynb",
+         "set_instance_data": "cif2lmdb.ipynb",
+         "map_size": "cif2lmdb.ipynb",
+         "convert": "cif2lmdb.ipynb",
+         "imglmdb": "imglmdb.ipynb",
+         "min_max_normalize": "preprocessing.ipynb",
+         "crop_and_pad_to_square": "preprocessing.ipynb",
+         "compute_per_pixel_mean": "preprocessing.ipynb",
+         "deep_copy_lmdb": "utils.ipynb"}
 
-modules = ["imglmdb.py"]
+modules = ["apply.py",
+           "cif2lmdb.py",
+           "imglmdb.py",
+           "preprocessing.py",
+           "utils.py"]
 
 doc_url = "https://mlippeve.github.io/ifcimglib/"
 
