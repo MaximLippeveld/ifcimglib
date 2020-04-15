@@ -2,16 +2,19 @@
 
 __all__ = ["index", "modules", "custom_doc_links", "git_url"]
 
-index = {"preprocess_db": "apply.ipynb",
+index = {"preprocess_db_intra_image": "apply.ipynb",
+         "aggregate_fold_stats": "apply.ipynb",
          "get_instance": "cif2lmdb.ipynb",
          "update_instance_data": "cif2lmdb.ipynb",
          "set_instance_data": "cif2lmdb.ipynb",
          "map_size": "cif2lmdb.ipynb",
          "convert": "cif2lmdb.ipynb",
          "imglmdb": "imglmdb.ipynb",
+         "multidbwrapper": "imglmdb.ipynb",
+         "log_transform": "preprocessing.ipynb",
          "min_max_normalize": "preprocessing.ipynb",
          "crop_and_pad_to_square": "preprocessing.ipynb",
-         "compute_per_pixel_mean": "preprocessing.ipynb",
+         "compute_per_pixel_stats": "preprocessing.ipynb",
          "deep_copy_lmdb": "utils.ipynb"}
 
 modules = ["apply.py",
