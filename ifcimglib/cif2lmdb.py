@@ -46,8 +46,10 @@ map_size = 5368709120 # 5GiB
 # Cell
 
 @click.command(name="cif2lmdb")
+@click.argument("cif", type=click.Path(exists=True, dir_okay=False))
 @click.option("--output", type=click.Path(exists=False, dir_okay=False), default=None, help="Output filename. If not set, cif-filename is taken with lmdb extension.")
-@click.option("--channels", multiple=True, type=int, help="Images from these channels will be extracted. Default is to extract all.")
+@click.option("--channels", multiple=True, type=int, help="Images from these channels will be extracted. Default is to extract all. 1-based index.")
+@click.option("--names", multiple=True, type=str, help="Names to assign to channels.")
 @click.option("--debug", is_flag=True, flag_value=True, help="Show debugging information. Limits output to 100 first cells.", default=False)
 @click.option("--overwrite", is_flag=True, flag_value=True, help="Overwrite lmdb if it exists.", default=False)
 @click.option("--targets-npy", type=click.Path(exists=True, dir_okay=False), help="Numpy binary file containing targets.", default=None)
@@ -63,77 +65,82 @@ def convert(cif, output, channels, names, debug, overwrite, targets_npy, skip_np
 
     if overwrite and exists(output):
         Path(output).unlink()
-        if Path(arg+"-lock").exists():
-            Path(arg + "-lock").unlink()
+        if Path(output+"-lock").exists():
+            Path(output + "-lock").unlink()
     elif not overwrite and exists(output):
         raise ValueError(output, "Output path exists.")
 
     logger = logging.getLogger(__name__)
 
     try:
-        logger.debug("Starting Java VM in thread %s" % str(_id))
+        logger.debug("Starting Java VM")
         javabridge.start_vm(class_path=bf.JARS, run_headless=True, max_heap_size="8G")
-        logger.debug("Started Java VM in thread %s" % str(_id))
+        logger.debug("Started Java VM")
 
-        reader = bf.formatreader.get_image_reader("tmp", path=_cif)
+        reader = bf.formatreader.get_image_reader("tmp", path=cif)
         r_length = javabridge.call(reader.metadata, "getImageCount", "()I")
         num_channels = javabridge.call(reader.metadata, "getChannelCount", "(I)I", 0)
 
         if debug:
             r_length=200
 
-        if _c is None:
+        if channels is None:
             crange = [i for i in range(num_channels)]
         else:
-            crange = np.array(_c)-1
+            crange = np.array(channels)-1
 
         if len(names) != 0 and len(crange) != len(names):
-            raise ValueError(_n, "Incorrect amount of names for channels.")
+            raise ValueError(names, "Incorrect amount of names for channels.")
 
         idx_bytes = int(np.ceil((np.floor(np.log2(r_length))+1)/8.))
 
         env = lmdb.open(output, lock=False, map_size=map_size, subdir=False)
-        logger.info("Opening lmdb database %s" % output)
-        output_length = r_length//2
+        try:
+            logger.info("Opening lmdb database %s" % output)
+            output_length = r_length//2
 
-        with env.begin(write=True) as txn:
-            if targets_npy is not None:
-                # write some metadata
-                targets = list(numpy.load(targets_npy))
-                if skip_npy is not None:
-                    skip = list(numpy.load(skip_npy))
-                    output_length -= len(skip)
+            with env.begin(write=True) as txn:
 
-                if not debug: # skip test when debugging
-                    assert len(targets) == output_length, "Number of targets does not match eventual lmdb length (meta %d, lmdb %d)." % (len(targets), output_length)
+                skip = []
+                if targets_npy is not None:
+                    # write some metadata
+                    targets = list(numpy.load(targets_npy))
 
-                txn.put(b'__targets__', pickle.dumps(targets))
+                    if skip_npy is not None:
+                        skip = list(numpy.load(skip_npy))
+                        output_length -= len(skip)
 
-            txn.put(b'__len__', (output_length).to_bytes(idx_bytes, "big"))
-            if _n is not None:
-                txn.put(b'__names__', " ".join(names).encode("utf-8"))
+                    if not debug: # skip test when debugging
+                        assert len(targets) == output_length, "Number of targets does not match eventual lmdb length (meta %d, lmdb %d)." % (len(targets), output_length)
 
-            bar = tqdm(range(r_length, r_length)[::2])
-            skip_count = 0
-            counter = 0
-            for i in bar:
-                if i//2 in skip:
-                    skip_count += 1
-                    bar.set_postfix({"#skipped": skip_count})
-                    continue
+                    txn.put(b'__targets__', pickle.dumps(targets))
 
-                instance = None
-                for c_idx, c in enumerate(crange):
-                    image = reader.read(c=c, series=i, rescale=False)
-                    mask = reader.read(c=c, series=i+1, rescale=False)
-                    if instance == None:
-                        instance = get_instance(image.shape, len(crange))
-                    update_instance_data(instance, c_idx, image, mask)
+                txn.put(b'__len__', (output_length).to_bytes(idx_bytes, "big"))
+                if names is not None:
+                    txn.put(b'__names__', " ".join(names).encode("utf-8"))
 
-                txn.put(counter.to_bytes(idx_bytes, byteorder='big'), pickle.dumps(instance))
+                bar = tqdm(range(r_length)[::2])
+                skip_count = 0
+                counter = 0
+                for i in bar:
+                    if i//2 in skip:
+                        skip_count += 1
+                        bar.set_postfix({"#skipped": skip_count})
+                        continue
 
-                counter += 1
+                    instance = None
+                    for c_idx, c in enumerate(crange):
+                        image = reader.read(c=c, series=i, rescale=False)
+                        mask = reader.read(c=c, series=i+1, rescale=False)
+                        if instance == None:
+                            instance = get_instance(image.shape, len(crange))
+                        update_instance_data(instance, c_idx, image, mask)
+
+                    txn.put(counter.to_bytes(idx_bytes, byteorder='big'), pickle.dumps(instance))
+
+                    counter += 1
+        finally:
+            env.sync()
+            env.close()
     finally:
-        env.sync()
-        env.close()
         javabridge.kill_vm()

@@ -24,7 +24,10 @@ class imglmdb:
             self.length = int.from_bytes(txn.get(b"__len__"), endianess)
             self.names = txn.get(b'__names__').decode("utf-8").split(' ')
             self.channels_of_interest = [i for i in range(len(self.names))]
-            self.targets = pickle.loads(txn.get(b'__targets__', default=None))
+
+            self.targets = txn.get(b'__targets__', default=None)
+            if self.targets is not None:
+                self.targets = pickle.loads(targets)
         self.idx_byte_length = int(numpy.ceil(numpy.floor(numpy.log2(self.length))/8.))
 
         self.logger.info("Initialized db (%s) with length %d, and channel names %s" % (self.db_path, self.length, " ".join(self.names)))
