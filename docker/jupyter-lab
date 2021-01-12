@@ -1,0 +1,32 @@
+FROM python:3.8-slim
+
+WORKDIR /app
+
+RUN apt-get update
+
+# https://linuxize.com/post/install-java-on-debian-10/
+RUN apt-get install -y apt-transport-https ca-certificates wget dirmngr gnupg software-properties-common
+RUN wget -qO - https://adoptopenjdk.jfrog.io/adoptopenjdk/api/gpg/key/public | apt-key add -
+RUN add-apt-repository --yes https://adoptopenjdk.jfrog.io/adoptopenjdk/deb/
+RUN apt-get update
+RUN mkdir -p /usr/share/man/man1
+RUN apt-get install -y adoptopenjdk-8-hotspot
+ENV JAVA_HOME="/usr/lib/jvm/adoptopenjdk-8-hotspot-amd64/"
+
+RUN apt-get install -y gcc libffi-dev python-dev build-essential ffmpeg libsm6 libxext6
+RUN apt-get clean
+
+RUN pip install numpy
+
+COPY README.md .
+COPY setup.py .
+COPY settings.ini .
+COPY ifcimglib/ ./ifcimglib
+RUN pip install .
+
+COPY ./ .
+
+EXPOSE 8888
+
+CMD ["jupyter", "lab", "--no-browser", "--allow-root", "--port=8888", "--ip=0.0.0.0"]
+
