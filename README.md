@@ -41,3 +41,18 @@ cif2lmdb --channels 1 --channels 6 --channels 9 --names BF --names SSC --names B
 It takes input.cif as input and outputs output.lmdb, an lmdb-file containing 100 (see debug flag) 3-channel images with names BF, SSC and BF2.
 
 Please see the [imglmdb.ipynb](imglmdb.ipynb) notebook for usage examples of the `imglmdb` package.
+
+### Docker
+
+![docker badge](https://img.shields.io/docker/pulls/maximlippeveld/ifcimglib?style=flat-square)
+
+[Docker images](https://hub.docker.com/r/maximlippeveld/ifcimglib) are available for cif2lmdb (tag cif2lmdb) and the notebook environment (tag jupyter-lab).
+
+For using cif2lmdb run:
+```
+docker run --rm -v /path/to/data/dir:/data maximlippeveld/ifcimglib:cif2lmdb [OPTIONS] /data/example.cif
+```
+For using the notebook environment run:
+```
+docker run --it -v /path/to/data/dir:/data -p [your-port]:8888 maximlippeveld/ifcimglib:jupyter-lab
+```
