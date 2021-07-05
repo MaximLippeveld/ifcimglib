@@ -1,0 +1,12 @@
+lmdb 
+javabridge 
+numpy 
+pandas 
+matplotlib 
+seaborn 
+jupyterlab 
+nbdev 
+click 
+tqdm 
+python-bioformats 
+opencv-python-headless

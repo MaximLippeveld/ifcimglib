@@ -18,13 +18,14 @@ RUN apt-get clean
 
 RUN pip install numpy
 
+COPY requirements.txt .
+RUN pip install -r requirements.txt
+
 COPY README.md .
 COPY setup.py .
 COPY settings.ini .
 COPY ifcimglib/ ./ifcimglib
-RUN pip install .
-
-COPY ./ .
+RUN pip install -e .
 
 EXPOSE 8888
 

@@ -13,7 +13,7 @@ RUN mkdir -p /usr/share/man/man1
 RUN apt-get install -y adoptopenjdk-8-hotspot
 ENV JAVA_HOME="/usr/lib/jvm/adoptopenjdk-8-hotspot-amd64/"
 
-RUN apt-get install -y gcc libffi-dev python-dev build-essential
+RUN apt-get install -y gcc libffi-dev python-dev build-essential ffmpeg libsm6 libxext6
 RUN apt-get clean
 
 RUN pip install numpy
@@ -25,7 +25,11 @@ COPY README.md .
 COPY setup.py .
 COPY settings.ini .
 COPY ifcimglib/ ./ifcimglib
-RUN pip install .
+RUN pip install -e .
 
-ENTRYPOINT ["cif2lmdb"]
+COPY ./ .
+
+EXPOSE 8888
+
+CMD ["jupyter", "lab", "--no-browser", "--allow-root", "--port=8888", "--ip=0.0.0.0"]
 
