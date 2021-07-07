@@ -10,3 +10,5 @@ click
 tqdm 
 python-bioformats 
 opencv-python-headless
+Pillow
+flowio
