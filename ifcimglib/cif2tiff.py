@@ -58,7 +58,7 @@ def process_chunk(images, crange):
 
     return lower_bound, upper_bound
 
-def get_min_max_in_file(reader, r_length, crange, nprocs):
+def get_min_max_in_file(reader, r_length, crange, nprocs, do_tqdm=True):
 
     chunks = numpy.array_split(numpy.arange(0, r_length, step=2), nprocs)
     image_chunks = [None]*len(chunks)
@@ -175,4 +175,4 @@ def convert_cmd(cif, output, channels, debug, nproc):
     cif_files = glob.glob(str(Path(cif) / "**" / "*.cif"))
     fcs_files = [str(Path(f).with_suffix(".fcs")) for f in cif_files]
 
-    convert(cif_files, fcs_files, output, channels, debug, nproc)
+    convert(cif_files, fcs_files, output, channels, debug, nproc, do_tqdm=False)
