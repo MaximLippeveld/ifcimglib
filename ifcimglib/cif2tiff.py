@@ -58,9 +58,9 @@ def process_chunk(images, crange):
 
     return lower_bound, upper_bound
 
-def get_min_max_in_file(reader, r_length, crange, nprocs):
+def get_min_max_in_file(reader, r_length, crange, nprocs, nchunks):
 
-    chunks = numpy.array_split(numpy.arange(0, r_length, step=2), nprocs)
+    chunks = numpy.array_split(numpy.arange(0, r_length, step=2), nchunks)
     image_chunks = [None]*len(chunks)
 
     with Pool(processes=nprocs) as pool:
@@ -102,7 +102,10 @@ def get_min_max_in_file(reader, r_length, crange, nprocs):
 
 # Cell
 
-def convert(cif_files, fcs_files, output, channels, debug, nproc=1, external_jvm_control=False):
+def convert(cif_files, fcs_files, output, channels, debug, nproc=1, nchunks=None, external_jvm_control=False):
+
+    if nchunks is None:
+        nchunks = nproc
 
     if debug:
         logging.basicConfig()
@@ -137,7 +140,7 @@ def convert(cif_files, fcs_files, output, channels, debug, nproc=1, external_jvm
             else:
                 crange = np.array(channels)-1
 
-            lower_bound, upper_bound, image_chunks = get_min_max_in_file(reader, r_length, crange, nproc)
+            lower_bound, upper_bound, image_chunks = get_min_max_in_file(reader, r_length, crange, nproc, nchunks)
             lower_bound = lower_bound.reshape(len(crange), 1, 1)
             upper_bound = upper_bound.reshape(len(crange), 1, 1)
 
@@ -165,14 +168,19 @@ def convert(cif_files, fcs_files, output, channels, debug, nproc=1, external_jvm
 @click.option("--channels", multiple=True, type=int, default=[], help="Images from these channels will be extracted. Default is to extract all. 1-based index.")
 @click.option("--debug", is_flag=True, flag_value=True, help="Show debugging information. Limits output to 100 first cells.", default=False)
 @click.option("--nproc", type=int, default=-1, help="Amount of processes to use.")
-def convert_cmd(cif, output, channels, debug, nproc):
+@click.option("--nchunks", type=int, default=-1, help="Amount of chunks to use.")
+def convert_cmd(cif, output, channels, debug, nproc, nchunks):
 
     if nproc == -1:
         from multiprocessing import cpu_count
         nproc = cpu_count()
 
+    if nchunks == -1:
+        nchunks = nproc
+
+
     import glob
     cif_files = glob.glob(str(Path(cif) / "**" / "*.cif"))
     fcs_files = [str(Path(f).with_suffix(".fcs")) for f in cif_files]
 
-    convert(cif_files, fcs_files, output, channels, debug, nproc)
+    convert(cif_files, fcs_files, output, channels, debug, nproc, nchunks)
