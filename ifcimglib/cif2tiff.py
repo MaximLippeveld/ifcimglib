@@ -62,28 +62,27 @@ def get_min_max_in_file(reader, r_length, crange, nprocs):
 
     chunks = numpy.array_split(numpy.arange(0, r_length, step=2), nprocs)
     image_chunks = [None]*len(chunks)
-    for i, chunk in tqdm(enumerate(chunks), position=0, leave=False, total=len(chunks)):
-
-        images = [None]*len(chunk)
-        for j, series in tqdm(enumerate(chunk), total=len(chunk), position=1, leave=False):
-            first = reader.read(c=0, series=series)
-            im = numpy.empty(shape=(len(crange),) + first.shape, dtype=first.dtype)
-            mask = numpy.empty(shape=(len(crange),) + first.shape, dtype=first.dtype)
-
-            im[0] = first
-            for c in crange[1:]:
-                im[c] = reader.read(c=c, series=series)
-            for c in crange:
-                mask[c] = reader.read(c=c, series=series+1)
-            images[j] = im*mask
-
-        image_chunks[i] = images
-    print("Loaded images")
 
     with Pool(processes=nprocs) as pool:
         results = []
-        for images in image_chunks:
+        for i, chunk in tqdm(enumerate(chunks), position=0, leave=False, total=len(chunks)):
+
+            images = [None]*len(chunk)
+            for j, series in tqdm(enumerate(chunk), total=len(chunk), position=1, leave=False, mininterval=10):
+                first = reader.read(c=0, series=series)
+                im = numpy.empty(shape=(len(crange),) + first.shape, dtype=first.dtype)
+                mask = numpy.empty(shape=(len(crange),) + first.shape, dtype=first.dtype)
+
+                im[0] = first
+                for c in crange[1:]:
+                    im[c] = reader.read(c=c, series=series)
+                for c in crange:
+                    mask[c] = reader.read(c=c, series=series+1)
+                images[j] = im*mask
+
+            image_chunks[i] = images
             results.append(pool.apply_async(process_chunk, args=(images, crange)))
+            print(f"Submitted chunk {i}")
 
         lower_bound, upper_bound = None, None
         for i, result in enumerate(results):
@@ -143,7 +142,7 @@ def convert(cif_files, fcs_files, output, channels, debug, nproc=1, external_jvm
             upper_bound = upper_bound.reshape(len(crange), 1, 1)
 
             a = 0
-            for images in tqdm(image_chunks, position=0, leave=False):
+            for images in tqdm(image_chunks, position=0, leave=False, mininterval=10):
                 for im in images:
                     im = (((im - lower_bound) / (upper_bound - lower_bound))*(2**16)).astype(numpy.uint16)
                     pillow_img = Image.fromarray(im[0], mode="I;16")
