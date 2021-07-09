@@ -178,19 +178,19 @@ def convert(cif_files, fcs_files, output, channels, nproc=1, nchunks=None, limit
             lower_bound = lower_bound.reshape(len(crange), 1, 1)
             upper_bound = upper_bound.reshape(len(crange), 1, 1)
 
-            a = 0
+            label_idx = 0
             logging.debug(f"[convert] writing out images for {cif}")
             for images in tqdm(image_chunks, position=0, leave=False, mininterval=10):
                 for im in images:
                     im = (((im - lower_bound) / (upper_bound - lower_bound))*(2**16)).astype(numpy.uint16)
                     pillow_img = Image.fromarray(im[0], mode="I;16")
                     pillow_img.save(
-                        prefix / str(labels[a]) / f"{counter}.tiff",
+                        prefix / str(labels[label_idx]) / f"{counter}.tiff",
                         append_images = [Image.fromarray(im[i], mode="I;16") for i in range(1, im.shape[0])],
                         save_all = True
                     )
                     counter+=1
-                    a+1
+                    label_idx+=1
 
             logging.debug(f"[convert] all images written for {cif}")
 
