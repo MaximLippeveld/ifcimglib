@@ -137,7 +137,7 @@ def get_min_max_in_file(reader, r_length, crange, nprocs, nchunks):
 
 # Cell
 
-def convert(cif_files, fcs_files, output, channels, debug, nproc=1, nchunks=None, external_jvm_control=False):
+def convert(cif_files, fcs_files, output, channels, nproc=1, nchunks=None, limit=-1, external_jvm_control=False):
 
     if nchunks is None:
         nchunks = nproc
@@ -160,11 +160,12 @@ def convert(cif_files, fcs_files, output, channels, debug, nproc=1, nchunks=None
             labels, prefix = setup_directory_structure(output, fcs)
 
             reader = bf.formatreader.get_image_reader("reader", path=cif)
-            r_length = javabridge.call(reader.metadata, "getImageCount", "()I")
-            num_channels = javabridge.call(reader.metadata, "getChannelCount", "(I)I", 0)
 
-            if debug:
-                r_length=100
+            r_length = javabridge.call(reader.metadata, "getImageCount", "()I")
+            if limit != -1:
+                r_length = limit
+
+            num_channels = javabridge.call(reader.metadata, "getChannelCount", "(I)I", 0)
 
             if len(channels) == 0:
                 crange = [i for i in range(num_channels)]
@@ -200,10 +201,11 @@ def convert(cif_files, fcs_files, output, channels, debug, nproc=1, nchunks=None
 @click.argument("cif", type=click.Path(exists=True, file_okay=False))
 @click.argument("output", type=click.Path(exists=False, file_okay=False))
 @click.option("--channels", multiple=True, type=int, default=[], help="Images from these channels will be extracted. Default is to extract all. 1-based index.")
-@click.option("--debug", is_flag=True, flag_value=True, help="Show debugging information. Limits output to 100 first cells.", default=False)
 @click.option("--nproc", type=int, default=-1, help="Amount of processes to use.")
 @click.option("--nchunks", type=int, default=-1, help="Amount of chunks to use.")
-def convert_cmd(cif, output, channels, debug, nproc, nchunks):
+@click.option("--debug", is_flag=True, flag_value=True, help="Show debugging information.", default=False)
+@click.option("--limit", type=int, default=-1, help="Limit images to load from each file.")
+def convert_cmd(cif, output, channels, nproc, nchunks, debug, limit):
 
     if nproc == -1:
         from multiprocessing import cpu_count
@@ -219,4 +221,4 @@ def convert_cmd(cif, output, channels, debug, nproc, nchunks):
     cif_files = glob.glob(str(Path(cif) / "**" / "*.cif"))
     fcs_files = [str(Path(f).with_suffix(".fcs")) for f in cif_files]
 
-    convert(cif_files, fcs_files, output, channels, debug, nproc, nchunks)
+    convert(cif_files, fcs_files, output, channels, nproc, nchunks, limit)
