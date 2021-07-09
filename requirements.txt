@@ -12,3 +12,4 @@ python-bioformats
 opencv-python-headless
 Pillow
 flowio
+tblib
