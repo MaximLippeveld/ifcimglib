@@ -192,8 +192,11 @@ def convert(cif_files, fcs_files, output, channels, nproc=1, nchunks=None, limit
                     counter+=1
                     a+1
 
+            logging.debug(f"[convert] all images written for {cif}")
+
     finally:
         if not external_jvm_control:
+            logging.debug(f"[convert] killing vm")
             javabridge.kill_vm()
 
 # Cell
