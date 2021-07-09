@@ -15,6 +15,10 @@ import click
 import flowio
 from PIL import Image
 from multiprocessing import Pool
+import sys
+
+import tblib.pickling_support
+tblib.pickling_support.install()
 
 # Internal Cell
 
@@ -23,6 +27,18 @@ def _is_image(_series, _r):
     return _r.rdr.getPixelType() != 1
 
 # Internal Cell
+
+class ExceptionWrapper(object):
+
+    def __init__(self, ee):
+        self.ee = ee
+        __, __, self.tb = sys.exc_info()
+
+    def re_raise(self):
+        raise self.ee.with_traceback(self.tb)
+
+# Internal Cell
+
 def setup_directory_structure(out, fcs):
     data = flowio.FlowData(fcs)
 
@@ -35,28 +51,29 @@ def setup_directory_structure(out, fcs):
 
     labels = numpy.reshape(data.events, (-1, data.channel_count))[:, label_idx-1].astype(int)
 
-    out = Path(out)
+    prefix = Path(out).joinpath(*Path(fcs).parts[-3:-1])
     for label in numpy.unique(labels):
-        (Path(out) / str(label)).mkdir(exist_ok=True, parents=True)
+        (prefix / str(label)).mkdir(exist_ok=True, parents=True)
 
-    return labels
-
-# Internal Cell
+    return labels, prefix
 
 def process_chunk(images, crange):
-    upper_bound = images[0].reshape(len(crange), -1).max(axis=1)
-    lower_bound = images[0].reshape(len(crange), -1).min(axis=1)
+    try:
+        upper_bound = images[0].reshape(len(crange), -1).max(axis=1)
+        lower_bound = images[0].reshape(len(crange), -1).min(axis=1)
 
-    counter = 1
-    for i in images[1:]:
-        a = images[counter].reshape(len(crange), -1).min(axis=1)
-        b = images[counter].reshape(len(crange), -1).max(axis=1)
-        lower_bound = np.where(a < lower_bound, a, lower_bound)
-        upper_bound = np.where(b > upper_bound, b, upper_bound)
+        counter = 1
+        for i in images[1:]:
+            a = images[counter].reshape(len(crange), -1).min(axis=1)
+            b = images[counter].reshape(len(crange), -1).max(axis=1)
+            lower_bound = np.where(a < lower_bound, a, lower_bound)
+            upper_bound = np.where(b > upper_bound, b, upper_bound)
 
-        counter += 1
+            counter += 1
 
-    return lower_bound, upper_bound
+        return lower_bound, upper_bound
+    except Exception as e:
+        return ExceptionWrapper(e)
 
 def get_min_max_in_file(reader, r_length, crange, nprocs, nchunks):
 
@@ -65,6 +82,7 @@ def get_min_max_in_file(reader, r_length, crange, nprocs, nchunks):
 
     with Pool(processes=nprocs) as pool:
         results = []
+        lower_bound, upper_bound = None, None
         for i, chunk in tqdm(enumerate(chunks), position=0, leave=False, total=len(chunks)):
 
             images = [None]*len(chunk)
@@ -81,22 +99,28 @@ def get_min_max_in_file(reader, r_length, crange, nprocs, nchunks):
                 images[j] = im*mask
 
             image_chunks[i] = images
-            results.append(pool.apply_async(process_chunk, args=(images, crange)))
+            results.append(pool.apply_async(process_chunk, args=(image_chunks[i], crange)))
             print(f"Submitted chunk {i}")
 
-        lower_bound, upper_bound = None, None
-        for i, result in enumerate(results):
-            print(f"Waiting for result {i}")
-            a, b = result.get()
+            if len(results) == 2:
+                for i, result in enumerate(results):
+                    print(f"Waiting for result {i}")
+                    r = result.get()
 
-            if lower_bound is None:
-                lower_bound = a
-            else:
-                lower_bound = np.where(a < lower_bound, a, lower_bound)
-            if upper_bound is None:
-                upper_bound = b
-            else:
-                upper_bound = np.where(b > upper_bound, b, upper_bound)
+                    if isinstance(r, ExceptionWrapper):
+                        r.re_raise()
+
+                    a, b = r
+
+                    if lower_bound is None:
+                        lower_bound = a
+                    else:
+                        lower_bound = np.where(a < lower_bound, a, lower_bound)
+                    if upper_bound is None:
+                        upper_bound = b
+                    else:
+                        upper_bound = np.where(b > upper_bound, b, upper_bound)
+                results = []
 
     return lower_bound, upper_bound, image_chunks
 
@@ -126,7 +150,7 @@ def convert(cif_files, fcs_files, output, channels, debug, nproc=1, nchunks=None
         for cif, fcs in zip(cif_files, fcs_files):
             print(f"Processing {cif}")
 
-            labels = setup_directory_structure(output, fcs)
+            labels, prefix = setup_directory_structure(output, fcs)
 
             reader = bf.formatreader.get_image_reader("reader", path=cif)
             r_length = javabridge.call(reader.metadata, "getImageCount", "()I")
@@ -150,7 +174,7 @@ def convert(cif_files, fcs_files, output, channels, debug, nproc=1, nchunks=None
                     im = (((im - lower_bound) / (upper_bound - lower_bound))*(2**16)).astype(numpy.uint16)
                     pillow_img = Image.fromarray(im[0], mode="I;16")
                     pillow_img.save(
-                        output / str(labels[a]) / f"{counter}.tiff",
+                        prefix / str(labels[a]) / f"{counter}.tiff",
                         append_images = [Image.fromarray(im[i], mode="I;16") for i in range(1, im.shape[0])],
                         save_all = True
                     )
